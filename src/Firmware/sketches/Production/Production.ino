@@ -13,18 +13,17 @@
  * Connection configuration
  *
  */
-
-#define WIFI_SSID                   ""
-#define WIFI_PASSWORD               ""
+#define WIFI_SSID                   "KabelSalat"
+#define WIFI_PASSWORD               "DerMitDemLangenKabel"
 
 #define MQTT_CLIENTID               "Vibelight Device 1.0 xxxxxxxxxxxxx"
-#define MQTT_SERVER                 "mqtt.sicherheitskritisch.de"
+#define MQTT_SERVER                 "iot.eclipse.org"
 #define MQTT_SERVER_TLS_FINGERPRINT "57 36 77 FE E4 3E A9 AE C2 3C 33 DC 60 82 56 18 18 4D 60 50"
-#define MQTT_PORT                   8883
-#define MQTT_USERNAME               "device_xxxxxxxxxxxxx"
+#define MQTT_PORT                   1883
+#define MQTT_USERNAME               ""
 #define MQTT_PASSWORD               ""
 
-#define MQTT_CHANNEL                "/vibelight/api/1.0/"
+#define MQTT_CHANNEL                "/helloworld"
 
 // Try to connect N times and reset chip if limit is exceeded
 // #define CONNECTION_RETRIES          3
@@ -356,7 +355,7 @@ void connectMQTT()
     {
         Serial.print("Attempting MQTT connection... ");
 
-        if (MQTTClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_PASSWORD, MQTT_SERVER_TLS_FINGERPRINT) == true)
+        if (MQTTClient.connect(MQTT_CLIENTID) == true)
         {
             Serial.println("Connected.");
 
