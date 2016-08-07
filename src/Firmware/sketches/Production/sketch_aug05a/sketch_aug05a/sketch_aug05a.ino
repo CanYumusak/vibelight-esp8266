@@ -12,7 +12,7 @@ char* server = "iot.eclipse.org";
 
 
 #define PIN_NEOPIXELS               D1       // GPIO5 = D1
-#define NEOPIXELS_COUNT             60
+#define NEOPIXELS_COUNT             40
 #define NEOPIXELS_BRIGHTNESS        255     // [0..255]
 
 
@@ -41,6 +41,7 @@ void neopixel_showSingleColorScene(const uint32_t color)
     }
 
     neopixelStrip.show();
+    Serial.println("Shown neopixel");
 }
 
 void setup() {
@@ -69,7 +70,8 @@ void setup() {
   Serial.print(server);
   Serial.print(" as ");
   Serial.println(clientName);
-  
+  neopixelStrip.begin();
+  neopixelStrip.setBrightness(0xFF);
   if (client.connect((char*) clientName.c_str())) {
     Serial.println("Connected to MQTT broker");
     

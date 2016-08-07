@@ -13,17 +13,16 @@
  * Connection configuration
  *
  */
-#define WIFI_SSID                   "KabelSalat"
-#define WIFI_PASSWORD               "DerMitDemLangenKabel"
+const char* wifiSsid = "KabelSalat";
+const char* wifiPassword = "DerMitDemLangenKabel";
 
-#define MQTT_CLIENTID               "Vibelight Device 1.0 xxxxxxxxxxxxx"
-#define MQTT_SERVER                 "iot.eclipse.org"
-#define MQTT_SERVER_TLS_FINGERPRINT "57 36 77 FE E4 3E A9 AE C2 3C 33 DC 60 82 56 18 18 4D 60 50"
-#define MQTT_PORT                   1883
-#define MQTT_USERNAME               ""
-#define MQTT_PASSWORD               ""
+char* mqttClientId = "Vibelight Device 1.0 xxxxxxxxxxxxx";
+const char* mqttServer = "iot.eclipse.org";
+const uint8_t mqttPort = 1883;
 
-#define MQTT_CHANNEL                "/helloworld"
+char* out_topic = "lightcontrol/in_channel";
+char* in_topic = "lightcontrol/out_channel";
+
 
 // Try to connect N times and reset chip if limit is exceeded
 // #define CONNECTION_RETRIES          3
@@ -39,8 +38,13 @@
 #define EEPROM_ADDRESS_COLOR1       1
 #define EEPROM_ADDRESS_COLOR2       4
 
-WiFiClientSecure secureWifiClient = WiFiClientSecure();
-PubSubClient MQTTClient = PubSubClient(secureWifiClient);
+void callback(char* topic, byte* payload, unsigned int length) {
+  _MQTTRequestCallback(topic, payload, length);
+}
+
+
+WiFiClient wifiClient;
+PubSubClient client(mqttServer, mqttPort, callback, wifiClient);
 Adafruit_NeoPixel neopixelStrip = Adafruit_NeoPixel(NEOPIXELS_COUNT, PIN_NEOPIXELS, NEO_GRB + NEO_KHZ800);
 
 /*
@@ -230,7 +234,7 @@ void blinkStatusLED(const int times)
 
 void setupPins()
 {
-    pinMode(PIN_STATUSLED, OUTPUT);
+ //   pinMode(PIN_STATUSLED, OUTPUT);
 }
 
 void setupEEPROM()
@@ -250,31 +254,38 @@ void setupNeopixels()
 
 void setupWifi()
 {
-    Serial.printf("Connecting to %s\n", WIFI_SSID);
-
-    // Disable Wifi access point mode
-    WiFi.mode(WIFI_STA);
-
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    Serial.printf("Connecting to %s\n", wifiSsid);
+    
+    WiFi.begin(wifiSsid, wifiPassword);
 
     while (WiFi.status() != WL_CONNECTED)
     {
         // Blink 2 times when connecting
-        blinkStatusLED(2);
+        blinkStatusLED(1);
 
         delay(500);
         Serial.print(".");
     }
 
-    Serial.println();
+
     Serial.println("WiFi connected.");
 
     Serial.print("Obtained IP address: ");
     Serial.println(WiFi.localIP());
 }
 
+void neopixelFullOn() {
+  for (uint16_t i = 0; i < neopixelStrip.numPixels(); i++)
+    {
+        neopixelStrip.setPixelColor(i, 0xFFFFFF);
+    }
+    neopixelStrip.setBrightness(255);
+    neopixelStrip.show();
+}
+
 void _MQTTRequestCallback(char* topic, byte* payload, unsigned int length)
 {
+  neopixelFullOn();
     if (!topic || !payload)
     {
         Serial.println("Invalid argument (nullpointer) given!");
@@ -336,77 +347,59 @@ uint32_t _getRGBColorFromPayload(const char* payload, const uint8_t startPositio
 
 void setupMQTT()
 {
-    MQTTClient.setServer(MQTT_SERVER, MQTT_PORT);
-    MQTTClient.setCallback(_MQTTRequestCallback);
+ 
 }
 
 void connectMQTT()
 {
-    if (MQTTClient.connected() == true)
-    {
-        return ;
+// Generate client name based on MAC address and last 8 bits of microsecond counter
+  String clientName = "bedlights";
+//  Serial.print("Connecting to ");
+//  Serial.print(server);
+//  Serial.print(" as ");
+//  Serial.println(clientName);
+  
+  if (client.connect((char*) clientName.c_str())) {
+    Serial.println("Connected to MQTT broker");
+    
+    if (client.publish(out_topic, "hello from ESP8266")) {
+      Serial.println("Publish ok");
+    }
+    else {
+      Serial.println("Publish failed");
     }
 
-    #ifdef CONNECTION_RETRIES
-        uint8_t retries = CONNECTION_RETRIES;
-    #endif
-
-    while ( MQTTClient.connected() == false )
-    {
-        Serial.print("Attempting MQTT connection... ");
-
-        if (MQTTClient.connect(MQTT_CLIENTID) == true)
-        {
-            Serial.println("Connected.");
-
-            // (Re)subscribe on topic
-            MQTTClient.subscribe(MQTT_CHANNEL);
-
-            // Enable onboard LED permanently
-            digitalWrite(PIN_STATUSLED, LOW);
-        }
-        else
-        {
-            Serial.printf("Connection failed! Error code: %i\n", MQTTClient.state());
-
-            // Blink 3 times for indication of failed MQTT connection
-            blinkStatusLED(3);
-
-            Serial.println("Try again in 5 seconds...");
-            delay(5000);
-        }
-
-        #ifdef CONNECTION_RETRIES
-            retries--;
-
-            if (retries == 0)
-            {
-                Serial.print("Connection failed too often. Resetting chip...");
-
-                // Reset chip
-                ESP.restart();
-            }
-        #endif
+    if (client.subscribe(in_topic)) {
+      Serial.println("Subscribe ok");
+    } else {
+      Serial.println("Subscribe failed");
     }
+    neopixel_showSingleColorScene(0);
+  }
+  else {
+    Serial.println("MQTT connect failed");
+    Serial.println("Will reset and try again...");
+    abort();
+  }
 }
 
 void setup()
 {
     Serial.begin(115200);
-    delay(250);
+    delay(10);
 
-    setupPins();
-    setupEEPROM();
+//    setupPins();
+    //setupEEPROM();
 
-    setupNeopixels();
-    showLastScene();
+//    setupNeopixels();
+    //showLastScene();
 
     setupWifi();
     setupMQTT();
+    connectMQTT();
 }
 
 void loop()
-{
-    connectMQTT();
-    MQTTClient.loop();
+{   
+  client.loop();
 }
