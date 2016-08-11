@@ -65,6 +65,8 @@ void handleIncomingMessage(char* topic, byte* payload, unsigned int length) {
         Serial.println();
         Serial.printf("Brightness: %02X\n", brightness);
         Serial.println();
+
+        client.publish(out_topic, "I've got a request with color ");
         
         showScene(lightScene, color1, color2, brightness);
     }
